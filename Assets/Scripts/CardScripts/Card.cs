@@ -1,15 +1,20 @@
 using UnityEngine;
 using UnityEngine.UI;
+using DG.Tweening;
 
 public class Card : MonoBehaviour
 {
     [SerializeField] private int cardId;
+    [SerializeField] private GameObject cardFrontHolder;
     [SerializeField] private Image cardFrontImage;
     [SerializeField] private Image cardBackImage;
     [SerializeField] private Button cardButton;
+    [SerializeField] private RectTransform cardTransform;
+    [SerializeField] private float flipDuration = 0.3f;
     
     private bool isFlipped = false;
     private bool isMatched = false;
+    private bool isAnimating = false;
     private CardGameManager gameManager;
     
     private void Awake()
@@ -18,6 +23,9 @@ public class Card : MonoBehaviour
         
         if (cardButton == null)
             cardButton = GetComponent<Button>();
+            
+        if (cardTransform == null)
+            cardTransform = GetComponent<RectTransform>();
             
         if (cardButton != null)
             cardButton.onClick.AddListener(OnCardClicked);
@@ -51,16 +59,11 @@ public class Card : MonoBehaviour
     
     public void FlipCard()
     {
-        if (isMatched || gameManager.IsCheckingMatch())
+        if (isMatched || gameManager.IsCheckingMatch() || isAnimating)
             return;
             
         isFlipped = !isFlipped;
-        
-        if (cardFrontImage != null && cardBackImage != null)
-        {
-            cardFrontImage.gameObject.SetActive(isFlipped);
-            cardBackImage.gameObject.SetActive(!isFlipped);
-        }
+        AnimateFlip();
         
         if (isFlipped)
         {
@@ -68,14 +71,62 @@ public class Card : MonoBehaviour
         }
     }
     
+    private void AnimateFlip()
+    {
+        isAnimating = true;
+        
+        // Rotate to 90 degrees (hide current side)
+        cardTransform.DORotate(new Vector3(0, 90, 0), flipDuration / 2f)
+            .SetEase(Ease.InOutQuad)
+            .OnComplete(() =>
+            {
+                // Switch card sides at 90 degrees
+                if (cardFrontHolder != null && cardBackImage != null)
+                {
+                    cardFrontHolder.SetActive(isFlipped);
+                    cardBackImage.gameObject.SetActive(!isFlipped);
+                }
+                
+                // Rotate to 180 degrees (show new side)
+                cardTransform.DORotate(new Vector3(0, 180, 0), flipDuration / 2f)
+                    .SetEase(Ease.InOutQuad)
+                    .OnComplete(() =>
+                    {
+                        isAnimating = false;
+                    });
+            });
+    }
+    
     public void ResetCard()
     {
         isFlipped = false;
-        if (cardFrontImage != null && cardBackImage != null)
-        {
-            cardFrontImage.gameObject.SetActive(false);
-            cardBackImage.gameObject.SetActive(true);
-        }
+        AnimateReset();
+    }
+    
+    private void AnimateReset()
+    {
+        isAnimating = true;
+        
+        // Rotate back to 90 degrees
+        cardTransform.DORotate(new Vector3(0, 90, 0), flipDuration / 2f)
+            .SetEase(Ease.InOutQuad)
+            .OnComplete(() =>
+            {
+                // Switch back to card back
+                if (cardFrontHolder != null && cardBackImage != null)
+                {
+                    cardFrontHolder.SetActive(false);
+                    cardBackImage.gameObject.SetActive(true);
+                }
+                
+                // Rotate back to 0 degrees
+                cardTransform.DORotate(new Vector3(0, 0, 0), flipDuration / 2f)
+                    .SetEase(Ease.InOutQuad)
+                    .OnComplete(() =>
+                    {
+                        isAnimating = false;
+                    });
+            });
     }
     
     public void SetMatched()
@@ -97,7 +148,7 @@ public class Card : MonoBehaviour
     
     private void OnCardClicked()
     {
-        if (!isMatched && !isFlipped)
+        if (!isMatched && !isFlipped && !isAnimating)
         {
             FlipCard();
         }
@@ -107,5 +158,8 @@ public class Card : MonoBehaviour
     {
         if (cardButton != null)
             cardButton.onClick.RemoveListener(OnCardClicked);
+            
+        // Kill any active tweens
+        cardTransform.DOKill();
     }
 }
