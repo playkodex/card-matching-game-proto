@@ -158,6 +158,24 @@ public class Card : MonoBehaviour
         return isFlipped;
     }
     
+    public void ShowFaceInstant()
+    {
+        isFlipped = true;
+        
+        // Show front side without animation
+        if (cardFrontHolder != null && cardBackImage != null)
+        {
+            cardFrontHolder.SetActive(true);
+            cardBackImage.gameObject.SetActive(false);
+        }
+        
+        // Set rotation to show front (180 degrees)
+        if (cardTransform != null)
+        {
+            cardTransform.rotation = Quaternion.Euler(0, 180, 0);
+        }
+    }
+    
     private void OnCardClicked()
     {
         if (!isMatched && !isFlipped && !isAnimating)

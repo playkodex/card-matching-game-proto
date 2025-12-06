@@ -102,6 +102,7 @@ public class UIManager : MonoBehaviour
     {
         moveCount = 0;
         gameTime = 0;
+        isGameActive = true; // Restart the timer
         UpdateScoreDisplay(0);
         UpdateComboDisplay(0);
         UpdateMovesDisplay();
@@ -119,6 +120,12 @@ public class UIManager : MonoBehaviour
         gameTime = 0;
     }
     
+    public void ResumeGame()
+    {
+        isGameActive = true;
+        // Don't reset gameTime - keep the loaded value
+    }
+    
     public float GetGameTime()
     {
         return gameTime;
@@ -127,6 +134,18 @@ public class UIManager : MonoBehaviour
     public int GetMoveCount()
     {
         return moveCount;
+    }
+    
+    public void SetGameTime(float time)
+    {
+        gameTime = time;
+        UpdateTimerDisplay();
+    }
+    
+    public void SetMoveCount(int moves)
+    {
+        moveCount = moves;
+        UpdateMovesDisplay();
     }
     
     private void OnDestroy()

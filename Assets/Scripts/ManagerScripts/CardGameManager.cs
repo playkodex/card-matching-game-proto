@@ -28,6 +28,11 @@ public class CardGameManager : MonoBehaviour
     [Header("Scoring")]
     [SerializeField] private ScoreManager scoreManager;
     [SerializeField] private UIManager uiManager;
+    [SerializeField] private SaveLoadManager saveLoadManager;
+    
+    [Header("Save Settings")]
+    [SerializeField] private bool autoSave = true;
+    [SerializeField] private float autoSaveInterval = 5f;
     
     private List<Card> allCards = new List<Card>();
     private List<Card> flippedCards = new List<Card>();
@@ -47,14 +52,33 @@ public class CardGameManager : MonoBehaviour
             uiManager = FindObjectOfType<UIManager>();
         }
         
+        if (saveLoadManager == null)
+        {
+            saveLoadManager = SaveLoadManager.Instance;
+        }
+        
         if (containerRect == null && gridContainer != null)
         {
             containerRect = gridContainer.GetComponent<RectTransform>();
         }
         
-        totalMatches = (rows * columns) / 2;
-        SetupGrid();
-        GenerateCards();
+        // Try to load saved game
+        if (saveLoadManager != null && saveLoadManager.HasSaveFile())
+        {
+            LoadGame();
+        }
+        else
+        {
+            totalMatches = (rows * columns) / 2;
+            SetupGrid();
+            GenerateCards();
+        }
+        
+        // Start auto-save coroutine
+        if (autoSave)
+        {
+            StartCoroutine(AutoSaveCoroutine());
+        }
     }
     
     private void SetupGrid()
@@ -322,8 +346,20 @@ public class CardGameManager : MonoBehaviour
             uiManager.ResetUI();
         }
         
+        // Delete save file when starting new game
+        if (saveLoadManager != null)
+        {
+            saveLoadManager.DeleteSaveFile();
+        }
+        
         // Generate new cards
         GenerateCards();
+    }
+    
+    // Public method to start a completely new game (clears save)
+    public void NewGame()
+    {
+        ResetGame();
     }
     
     // Helper method to change layout at runtime
@@ -343,4 +379,156 @@ public class CardGameManager : MonoBehaviour
     public void SetLayout4x5() => SetGridLayout(4, 5);
     public void SetLayout5x6() => SetGridLayout(5, 6);
     public void SetLayout6x6() => SetGridLayout(6, 6);
+    
+    // Save/Load System
+    public void SaveGame()
+    {
+        if (saveLoadManager == null)
+            return;
+            
+        GameData gameData = new GameData
+        {
+            rows = rows,
+            columns = columns,
+            matchesFound = matchesFound,
+            cards = new List<CardData>()
+        };
+        
+        // Save card states
+        for (int i = 0; i < allCards.Count; i++)
+        {
+            Card card = allCards[i];
+            CardData cardData = new CardData
+            {
+                cardId = card.GetCardId(),
+                isFlipped = card.IsFlipped(),
+                isMatched = card.IsMatched(),
+                siblingIndex = card.transform.GetSiblingIndex()
+            };
+            gameData.cards.Add(cardData);
+        }
+        
+        // Save score data
+        if (scoreManager != null)
+        {
+            gameData.scoreData = scoreManager.GetScoreData();
+        }
+        
+        // Save UI data
+        if (uiManager != null)
+        {
+            gameData.gameTime = uiManager.GetGameTime();
+            gameData.moveCount = uiManager.GetMoveCount();
+        }
+        
+        saveLoadManager.SaveGame(gameData);
+    }
+    
+    public void LoadGame()
+    {
+        if (saveLoadManager == null)
+            return;
+            
+        GameData gameData = saveLoadManager.LoadGame();
+        if (gameData == null)
+            return;
+            
+        // Clear existing cards
+        foreach (Card card in allCards)
+        {
+            Destroy(card.gameObject);
+        }
+        allCards.Clear();
+        flippedCards.Clear();
+        
+        // Load grid settings
+        rows = gameData.rows;
+        columns = gameData.columns;
+        totalMatches = (rows * columns) / 2;
+        matchesFound = gameData.matchesFound;
+        
+        SetupGrid();
+        
+        // Recreate cards with saved states
+        foreach (CardData cardData in gameData.cards)
+        {
+            GameObject cardObject = Instantiate(cardPrefab, gridContainer);
+            Card card = cardObject.GetComponent<Card>();
+            
+            if (card != null)
+            {
+                card.SetCardId(cardData.cardId);
+                if (cardData.cardId < cardImages.Length)
+                {
+                    card.SetCardImage(cardImages[cardData.cardId]);
+                }
+                if (cardBackImage != null)
+                {
+                    card.SetCardBackImage(cardBackImage);
+                }
+                
+                // Restore card state
+                if (cardData.isMatched)
+                {
+                    card.ShowFaceInstant();
+                    card.SetMatched();
+                }
+                else if (cardData.isFlipped)
+                {
+                    // If card was flipped but not matched, show it flipped
+                    card.ShowFaceInstant();
+                    flippedCards.Add(card);
+                }
+                
+                card.transform.SetSiblingIndex(cardData.siblingIndex);
+                allCards.Add(card);
+            }
+        }
+        
+        // Restore score
+        if (scoreManager != null && gameData.scoreData != null)
+        {
+            scoreManager.LoadScoreData(gameData.scoreData);
+        }
+        
+        // Restore UI
+        if (uiManager != null)
+        {
+            uiManager.SetGameTime(gameData.gameTime);
+            uiManager.SetMoveCount(gameData.moveCount);
+            uiManager.ResumeGame();
+        }
+        
+        Debug.Log($"Game loaded: {rows}x{columns}, Matches: {matchesFound}/{totalMatches}");
+    }
+    
+    private IEnumerator AutoSaveCoroutine()
+    {
+        while (true)
+        {
+            yield return new WaitForSeconds(autoSaveInterval);
+            
+            // Only auto-save if game is active and not complete
+            if (matchesFound < totalMatches)
+            {
+                SaveGame();
+            }
+        }
+    }
+    
+    private void OnApplicationPause(bool pauseStatus)
+    {
+        if (pauseStatus && autoSave)
+        {
+            SaveGame();
+        }
+    }
+    
+    private void OnApplicationQuit()
+    {
+        if (autoSave)
+        {
+            SaveGame();
+        }
+    }
 }
