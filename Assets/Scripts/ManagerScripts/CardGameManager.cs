@@ -226,6 +226,12 @@ public class CardGameManager : MonoBehaviour
                     secondCard.SetMatched();
                     matchesFound++;
                     
+                    // Play match sound
+                    if (AudioManager.Instance != null)
+                    {
+                        AudioManager.Instance.PlayMatch();
+                    }
+                    
                     // Add score for match
                     if (scoreManager != null)
                     {
@@ -235,6 +241,12 @@ public class CardGameManager : MonoBehaviour
                     if (matchesFound >= totalMatches)
                     {
                         Debug.Log("Game Complete! All matches found!");
+                        
+                        // Play game over sound
+                        if (AudioManager.Instance != null)
+                        {
+                            AudioManager.Instance.PlayGameOver();
+                        }
                         
                         // Stop the timer
                         if (uiManager != null)
@@ -250,6 +262,12 @@ public class CardGameManager : MonoBehaviour
                     // No match, flip cards back
                     firstCard.ResetCard();
                     secondCard.ResetCard();
+                    
+                    // Play mismatch sound
+                    if (AudioManager.Instance != null)
+                    {
+                        AudioManager.Instance.PlayMismatch();
+                    }
                     
                     // Apply penalty for mismatch
                     if (scoreManager != null)

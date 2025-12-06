@@ -75,6 +75,12 @@ public class Card : MonoBehaviour
     {
         isAnimating = true;
         
+        // Play flip sound
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayCardFlip();
+        }
+        
         // Rotate to 90 degrees (hide current side)
         cardTransform.DORotate(new Vector3(0, 90, 0), flipDuration / 2f)
             .SetEase(Ease.InOutQuad)
@@ -106,6 +112,12 @@ public class Card : MonoBehaviour
     private void AnimateReset()
     {
         isAnimating = true;
+        
+        // Play flip sound
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayCardFlip();
+        }
         
         // Rotate back to 90 degrees
         cardTransform.DORotate(new Vector3(0, 90, 0), flipDuration / 2f)
