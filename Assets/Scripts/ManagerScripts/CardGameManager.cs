@@ -14,6 +14,12 @@ public class CardGameManager : MonoBehaviour
     [SerializeField] private GameObject cardPrefab;
     [SerializeField] private Transform gridContainer;
     [SerializeField] private GridLayoutGroup gridLayoutGroup;
+    [SerializeField] private RectTransform containerRect;
+    
+    [Header("Layout Settings")]
+    [SerializeField] private float spacing = 10f;
+    [SerializeField] private float padding = 20f;
+    [SerializeField] private float aspectRatio = 0.7f; // Width to height ratio for cards
     
     [Header("Card Images")]
     [SerializeField] private Sprite[] cardImages;
@@ -41,6 +47,11 @@ public class CardGameManager : MonoBehaviour
             uiManager = FindObjectOfType<UIManager>();
         }
         
+        if (containerRect == null && gridContainer != null)
+        {
+            containerRect = gridContainer.GetComponent<RectTransform>();
+        }
+        
         totalMatches = (rows * columns) / 2;
         SetupGrid();
         GenerateCards();
@@ -48,11 +59,50 @@ public class CardGameManager : MonoBehaviour
     
     private void SetupGrid()
     {
-        if (gridLayoutGroup != null)
+        if (gridLayoutGroup == null || containerRect == null)
+            return;
+            
+        // Set constraint to fixed column count
+        gridLayoutGroup.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+        gridLayoutGroup.constraintCount = columns;
+        
+        // Calculate available space
+        float availableWidth = containerRect.rect.width - (padding * 2);
+        float availableHeight = containerRect.rect.height - (padding * 2);
+        
+        // Calculate spacing between cards
+        float totalHorizontalSpacing = spacing * (columns - 1);
+        float totalVerticalSpacing = spacing * (rows - 1);
+        
+        // Calculate maximum card width and height
+        float maxCardWidth = (availableWidth - totalHorizontalSpacing) / columns;
+        float maxCardHeight = (availableHeight - totalVerticalSpacing) / rows;
+        
+        // Determine optimal size while maintaining aspect ratio
+        float cardWidth, cardHeight;
+        
+        // Try to fit by width first
+        cardWidth = maxCardWidth;
+        cardHeight = cardWidth / aspectRatio;
+        
+        // If height exceeds available space, fit by height instead
+        if (cardHeight > maxCardHeight)
         {
-            gridLayoutGroup.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
-            gridLayoutGroup.constraintCount = columns;
+            cardHeight = maxCardHeight;
+            cardWidth = cardHeight * aspectRatio;
         }
+        
+        // Apply calculated size
+        gridLayoutGroup.cellSize = new Vector2(cardWidth, cardHeight);
+        gridLayoutGroup.spacing = new Vector2(spacing, spacing);
+        gridLayoutGroup.padding = new RectOffset(
+            Mathf.RoundToInt(padding),
+            Mathf.RoundToInt(padding),
+            Mathf.RoundToInt(padding),
+            Mathf.RoundToInt(padding)
+        );
+        
+        Debug.Log($"Grid Setup: {rows}x{columns}, Cell Size: {cardWidth}x{cardHeight}");
     }
     
     private void GenerateCards()
@@ -257,4 +307,22 @@ public class CardGameManager : MonoBehaviour
         // Generate new cards
         GenerateCards();
     }
+    
+    // Helper method to change layout at runtime
+    public void SetGridLayout(int newRows, int newColumns)
+    {
+        rows = newRows;
+        columns = newColumns;
+        totalMatches = (rows * columns) / 2;
+        
+        ResetGame();
+    }
+    
+    // Preset layout methods
+    public void SetLayout2x2() => SetGridLayout(2, 2);
+    public void SetLayout3x3() => SetGridLayout(3, 3);
+    public void SetLayout4x4() => SetGridLayout(4, 4);
+    public void SetLayout4x5() => SetGridLayout(4, 5);
+    public void SetLayout5x6() => SetGridLayout(5, 6);
+    public void SetLayout6x6() => SetGridLayout(6, 6);
 }
