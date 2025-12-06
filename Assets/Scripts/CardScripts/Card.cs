@@ -4,6 +4,7 @@ using UnityEngine.UI;
 public class Card : MonoBehaviour
 {
     [SerializeField] private int cardId;
+    [SerializeField] private GameObject cardFrontHolder;
     [SerializeField] private Image cardFrontImage;
     [SerializeField] private Image cardBackImage;
     [SerializeField] private Button cardButton;
@@ -56,9 +57,9 @@ public class Card : MonoBehaviour
             
         isFlipped = !isFlipped;
         
-        if (cardFrontImage != null && cardBackImage != null)
+        if (cardFrontHolder != null && cardBackImage != null)
         {
-            cardFrontImage.gameObject.SetActive(isFlipped);
+            cardFrontHolder.SetActive(isFlipped);
             cardBackImage.gameObject.SetActive(!isFlipped);
         }
         
@@ -71,9 +72,9 @@ public class Card : MonoBehaviour
     public void ResetCard()
     {
         isFlipped = false;
-        if (cardFrontImage != null && cardBackImage != null)
+        if (cardFrontHolder != null && cardBackImage != null)
         {
-            cardFrontImage.gameObject.SetActive(false);
+            cardFrontHolder.SetActive(false);
             cardBackImage.gameObject.SetActive(true);
         }
     }
