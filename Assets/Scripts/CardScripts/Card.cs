@@ -59,7 +59,7 @@ public class Card : MonoBehaviour
     
     public void FlipCard()
     {
-        if (isMatched || gameManager.IsCheckingMatch() || isAnimating)
+        if (isMatched || isAnimating)
             return;
             
         isFlipped = !isFlipped;
