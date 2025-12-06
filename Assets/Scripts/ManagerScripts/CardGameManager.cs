@@ -29,6 +29,7 @@ public class CardGameManager : MonoBehaviour
     [SerializeField] private ScoreManager scoreManager;
     [SerializeField] private UIManager uiManager;
     [SerializeField] private SaveLoadManager saveLoadManager;
+    [SerializeField] private GameOverUI gameOverUI;
     
     [Header("Save Settings")]
     [SerializeField] private bool autoSave = true;
@@ -55,6 +56,11 @@ public class CardGameManager : MonoBehaviour
         if (saveLoadManager == null)
         {
             saveLoadManager = SaveLoadManager.Instance;
+        }
+        
+        if (gameOverUI == null)
+        {
+            gameOverUI = FindObjectOfType<GameOverUI>();
         }
         
         if (containerRect == null && gridContainer != null)
@@ -278,7 +284,8 @@ public class CardGameManager : MonoBehaviour
                             uiManager.StopGame();
                         }
                         
-                        // You can add win screen logic here
+                        // Show game over screen with final stats
+                        ShowGameOver();
                     }
                 }
                 else
@@ -360,6 +367,21 @@ public class CardGameManager : MonoBehaviour
     public void NewGame()
     {
         ResetGame();
+    }
+    
+    private void ShowGameOver()
+    {
+        if (gameOverUI == null)
+            return;
+            
+        // Gather final stats
+        int finalScore = scoreManager != null ? scoreManager.GetCurrentScore() : 0;
+        int maxCombo = scoreManager != null ? scoreManager.GetMaxCombo() : 0;
+        float finalTime = uiManager != null ? uiManager.GetGameTime() : 0;
+        int finalMoves = uiManager != null ? uiManager.GetMoveCount() : 0;
+        
+        // Show game over screen
+        gameOverUI.ShowGameOver(finalScore, finalTime, finalMoves, maxCombo);
     }
     
     // Helper method to change layout at runtime

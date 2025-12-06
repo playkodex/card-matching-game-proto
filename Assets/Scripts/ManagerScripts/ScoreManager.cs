@@ -11,6 +11,7 @@ public class ScoreManager : MonoBehaviour
     
     private int currentScore = 0;
     private int currentCombo = 0;
+    private int maxCombo = 0;
     private float lastMatchTime = 0;
     
     public event Action<int> OnScoreChanged;
@@ -56,6 +57,12 @@ public class ScoreManager : MonoBehaviour
         
         lastMatchTime = Time.time;
         
+        // Track max combo
+        if (currentCombo > maxCombo)
+        {
+            maxCombo = currentCombo;
+        }
+        
         // Calculate score with combo bonus
         int scoreToAdd = matchPoints + (currentCombo - 1) * comboMultiplier;
         currentScore += scoreToAdd;
@@ -92,10 +99,16 @@ public class ScoreManager : MonoBehaviour
         return currentCombo;
     }
     
+    public int GetMaxCombo()
+    {
+        return maxCombo;
+    }
+    
     public void ResetScore()
     {
         currentScore = 0;
         currentCombo = 0;
+        maxCombo = 0;
         lastMatchTime = 0;
         
         OnScoreChanged?.Invoke(currentScore);
