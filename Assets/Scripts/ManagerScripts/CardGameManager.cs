@@ -20,11 +20,10 @@ public class CardGameManager : MonoBehaviour
     [SerializeField] private Sprite cardBackImage;
     
     private List<Card> allCards = new List<Card>();
-    private Card firstFlippedCard;
-    private Card secondFlippedCard;
-    private bool isCheckingMatch = false;
+    private List<Card> flippedCards = new List<Card>();
     private int matchesFound = 0;
     private int totalMatches;
+    private bool isProcessingMatches = false;
     
     private void Start()
     {
@@ -112,51 +111,82 @@ public class CardGameManager : MonoBehaviour
     
     public void CardFlipped(Card card)
     {
-        if (firstFlippedCard == null)
+        // Add card to flipped cards list
+        if (!flippedCards.Contains(card))
         {
-            firstFlippedCard = card;
+            flippedCards.Add(card);
         }
-        else if (secondFlippedCard == null)
+        
+        // Check for pairs when we have at least 2 flipped cards
+        if (flippedCards.Count >= 2 && !isProcessingMatches)
         {
-            secondFlippedCard = card;
-            StartCoroutine(CheckMatch());
+            StartCoroutine(ProcessMatches());
         }
     }
     
-    private IEnumerator CheckMatch()
+    private IEnumerator ProcessMatches()
     {
-        isCheckingMatch = true;
+        isProcessingMatches = true;
         
         yield return new WaitForSeconds(flipDelay);
         
-        if (firstFlippedCard.GetCardId() == secondFlippedCard.GetCardId())
+        // Process pairs from the flipped cards list
+        List<Card> cardsToRemove = new List<Card>();
+        
+        // Check cards in pairs
+        for (int i = 0; i < flippedCards.Count - 1; i += 2)
         {
-            // Match found
-            firstFlippedCard.SetMatched();
-            secondFlippedCard.SetMatched();
-            matchesFound++;
-            
-            if (matchesFound >= totalMatches)
+            if (i + 1 < flippedCards.Count)
             {
-                Debug.Log("Game Complete! All matches found!");
-                // You can add win screen logic here
+                Card firstCard = flippedCards[i];
+                Card secondCard = flippedCards[i + 1];
+                
+                // Skip if either card is already matched
+                if (firstCard.IsMatched() || secondCard.IsMatched())
+                {
+                    cardsToRemove.Add(firstCard);
+                    cardsToRemove.Add(secondCard);
+                    continue;
+                }
+                
+                if (firstCard.GetCardId() == secondCard.GetCardId())
+                {
+                    // Match found
+                    firstCard.SetMatched();
+                    secondCard.SetMatched();
+                    matchesFound++;
+                    
+                    if (matchesFound >= totalMatches)
+                    {
+                        Debug.Log("Game Complete! All matches found!");
+                        // You can add win screen logic here
+                    }
+                }
+                else
+                {
+                    // No match, flip cards back
+                    firstCard.ResetCard();
+                    secondCard.ResetCard();
+                }
+                
+                cardsToRemove.Add(firstCard);
+                cardsToRemove.Add(secondCard);
             }
         }
-        else
+        
+        // Remove processed cards from flipped list
+        foreach (Card card in cardsToRemove)
         {
-            // No match, flip cards back
-            firstFlippedCard.ResetCard();
-            secondFlippedCard.ResetCard();
+            flippedCards.Remove(card);
         }
         
-        firstFlippedCard = null;
-        secondFlippedCard = null;
-        isCheckingMatch = false;
-    }
-    
-    public bool IsCheckingMatch()
-    {
-        return isCheckingMatch;
+        isProcessingMatches = false;
+        
+        // If there are still pairs to process, continue
+        if (flippedCards.Count >= 2)
+        {
+            StartCoroutine(ProcessMatches());
+        }
     }
     
     public void ResetGame()
@@ -169,9 +199,8 @@ public class CardGameManager : MonoBehaviour
         allCards.Clear();
         
         // Reset game state
-        firstFlippedCard = null;
-        secondFlippedCard = null;
-        isCheckingMatch = false;
+        flippedCards.Clear();
+        isProcessingMatches = false;
         matchesFound = 0;
         
         // Generate new cards
