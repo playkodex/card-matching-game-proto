@@ -14,10 +14,26 @@ public class CardGameManager : MonoBehaviour
     [SerializeField] private GameObject cardPrefab;
     [SerializeField] private Transform gridContainer;
     [SerializeField] private GridLayoutGroup gridLayoutGroup;
+    [SerializeField] private RectTransform containerRect;
+    
+    [Header("Layout Settings")]
+    [SerializeField] private float spacing = 10f;
+    [SerializeField] private float padding = 20f;
+    [SerializeField] private float aspectRatio = 0.7f; // Width to height ratio for cards
     
     [Header("Card Images")]
     [SerializeField] private Sprite[] cardImages;
     [SerializeField] private Sprite cardBackImage;
+    
+    [Header("Scoring")]
+    [SerializeField] private ScoreManager scoreManager;
+    [SerializeField] private UIManager uiManager;
+    [SerializeField] private SaveLoadManager saveLoadManager;
+    [SerializeField] private GameOverUI gameOverUI;
+    
+    [Header("Save Settings")]
+    [SerializeField] private bool autoSave = true;
+    [SerializeField] private float autoSaveInterval = 5f;
     
     private List<Card> allCards = new List<Card>();
     private List<Card> flippedCards = new List<Card>();
@@ -27,18 +43,96 @@ public class CardGameManager : MonoBehaviour
     
     private void Start()
     {
-        totalMatches = (rows * columns) / 2;
-        SetupGrid();
-        GenerateCards();
+        if (scoreManager == null)
+        {
+            scoreManager = ScoreManager.Instance;
+        }
+        
+        if (uiManager == null)
+        {
+            uiManager = FindObjectOfType<UIManager>();
+        }
+        
+        if (saveLoadManager == null)
+        {
+            saveLoadManager = SaveLoadManager.Instance;
+        }
+        
+        if (gameOverUI == null)
+        {
+            gameOverUI = FindObjectOfType<GameOverUI>();
+        }
+        
+        if (containerRect == null && gridContainer != null)
+        {
+            containerRect = gridContainer.GetComponent<RectTransform>();
+        }
+        
+        // Try to load saved game
+        if (saveLoadManager != null && saveLoadManager.HasSaveFile())
+        {
+            LoadGame();
+        }
+        else
+        {
+            totalMatches = (rows * columns) / 2;
+            SetupGrid();
+            GenerateCards();
+        }
+        
+        // Start auto-save coroutine
+        if (autoSave)
+        {
+            StartCoroutine(AutoSaveCoroutine());
+        }
     }
     
     private void SetupGrid()
     {
-        if (gridLayoutGroup != null)
+        if (gridLayoutGroup == null || containerRect == null)
+            return;
+            
+        // Set constraint to fixed column count
+        gridLayoutGroup.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+        gridLayoutGroup.constraintCount = columns;
+        
+        // Calculate available space
+        float availableWidth = containerRect.rect.width - (padding * 2);
+        float availableHeight = containerRect.rect.height - (padding * 2);
+        
+        // Calculate spacing between cards
+        float totalHorizontalSpacing = spacing * (columns - 1);
+        float totalVerticalSpacing = spacing * (rows - 1);
+        
+        // Calculate maximum card width and height
+        float maxCardWidth = (availableWidth - totalHorizontalSpacing) / columns;
+        float maxCardHeight = (availableHeight - totalVerticalSpacing) / rows;
+        
+        // Determine optimal size while maintaining aspect ratio
+        float cardWidth, cardHeight;
+        
+        // Try to fit by width first
+        cardWidth = maxCardWidth;
+        cardHeight = cardWidth / aspectRatio;
+        
+        // If height exceeds available space, fit by height instead
+        if (cardHeight > maxCardHeight)
         {
-            gridLayoutGroup.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
-            gridLayoutGroup.constraintCount = columns;
+            cardHeight = maxCardHeight;
+            cardWidth = cardHeight * aspectRatio;
         }
+        
+        // Apply calculated size
+        gridLayoutGroup.cellSize = new Vector2(cardWidth, cardHeight);
+        gridLayoutGroup.spacing = new Vector2(spacing, spacing);
+        gridLayoutGroup.padding = new RectOffset(
+            Mathf.RoundToInt(padding),
+            Mathf.RoundToInt(padding),
+            Mathf.RoundToInt(padding),
+            Mathf.RoundToInt(padding)
+        );
+        
+        Debug.Log($"Grid Setup: {rows}x{columns}, Cell Size: {cardWidth}x{cardHeight}");
     }
     
     private void GenerateCards()
@@ -120,6 +214,12 @@ public class CardGameManager : MonoBehaviour
         // Check for pairs when we have at least 2 flipped cards
         if (flippedCards.Count >= 2 && !isProcessingMatches)
         {
+            // Increment moves when a pair is formed
+            if (uiManager != null)
+            {
+                uiManager.IncrementMoves();
+            }
+            
             StartCoroutine(ProcessMatches());
         }
     }
@@ -156,10 +256,36 @@ public class CardGameManager : MonoBehaviour
                     secondCard.SetMatched();
                     matchesFound++;
                     
+                    // Play match sound
+                    if (AudioManager.Instance != null)
+                    {
+                        AudioManager.Instance.PlayMatch();
+                    }
+                    
+                    // Add score for match
+                    if (scoreManager != null)
+                    {
+                        scoreManager.AddMatchScore();
+                    }
+                    
                     if (matchesFound >= totalMatches)
                     {
                         Debug.Log("Game Complete! All matches found!");
-                        // You can add win screen logic here
+                        
+                        // Play game over sound
+                        if (AudioManager.Instance != null)
+                        {
+                            AudioManager.Instance.PlayGameOver();
+                        }
+                        
+                        // Stop the timer
+                        if (uiManager != null)
+                        {
+                            uiManager.StopGame();
+                        }
+                        
+                        // Show game over screen with final stats
+                        ShowGameOver();
                     }
                 }
                 else
@@ -167,6 +293,18 @@ public class CardGameManager : MonoBehaviour
                     // No match, flip cards back
                     firstCard.ResetCard();
                     secondCard.ResetCard();
+                    
+                    // Play mismatch sound
+                    if (AudioManager.Instance != null)
+                    {
+                        AudioManager.Instance.PlayMismatch();
+                    }
+                    
+                    // Apply penalty for mismatch
+                    if (scoreManager != null)
+                    {
+                        scoreManager.AddMismatchPenalty();
+                    }
                 }
                 
                 cardsToRemove.Add(firstCard);
@@ -203,7 +341,216 @@ public class CardGameManager : MonoBehaviour
         isProcessingMatches = false;
         matchesFound = 0;
         
+        // Reset score
+        if (scoreManager != null)
+        {
+            scoreManager.ResetScore();
+        }
+        
+        // Reset UI
+        if (uiManager != null)
+        {
+            uiManager.ResetUI();
+        }
+        
+        // Delete save file when starting new game
+        if (saveLoadManager != null)
+        {
+            saveLoadManager.DeleteSaveFile();
+        }
+        
         // Generate new cards
         GenerateCards();
+    }
+    
+    // Public method to start a completely new game (clears save)
+    public void NewGame()
+    {
+        ResetGame();
+    }
+    
+    private void ShowGameOver()
+    {
+        if (gameOverUI == null)
+            return;
+            
+        // Gather final stats
+        int finalScore = scoreManager != null ? scoreManager.GetCurrentScore() : 0;
+        int maxCombo = scoreManager != null ? scoreManager.GetMaxCombo() : 0;
+        float finalTime = uiManager != null ? uiManager.GetGameTime() : 0;
+        int finalMoves = uiManager != null ? uiManager.GetMoveCount() : 0;
+        
+        // Show game over screen
+        gameOverUI.ShowGameOver(finalScore, finalTime, finalMoves, maxCombo);
+    }
+    
+    // Helper method to change layout at runtime
+    public void SetGridLayout(int newRows, int newColumns)
+    {
+        rows = newRows;
+        columns = newColumns;
+        totalMatches = (rows * columns) / 2;
+        
+        ResetGame();
+    }
+    
+    // Preset layout methods
+    public void SetLayout2x2() => SetGridLayout(2, 2);
+    public void SetLayout3x3() => SetGridLayout(3, 3);
+    public void SetLayout4x4() => SetGridLayout(4, 4);
+    public void SetLayout4x5() => SetGridLayout(4, 5);
+    public void SetLayout5x6() => SetGridLayout(5, 6);
+    public void SetLayout6x6() => SetGridLayout(6, 6);
+    
+    // Save/Load System
+    public void SaveGame()
+    {
+        if (saveLoadManager == null)
+            return;
+            
+        GameData gameData = new GameData
+        {
+            rows = rows,
+            columns = columns,
+            matchesFound = matchesFound,
+            cards = new List<CardData>()
+        };
+        
+        // Save card states
+        for (int i = 0; i < allCards.Count; i++)
+        {
+            Card card = allCards[i];
+            CardData cardData = new CardData
+            {
+                cardId = card.GetCardId(),
+                isFlipped = card.IsFlipped(),
+                isMatched = card.IsMatched(),
+                siblingIndex = card.transform.GetSiblingIndex()
+            };
+            gameData.cards.Add(cardData);
+        }
+        
+        // Save score data
+        if (scoreManager != null)
+        {
+            gameData.scoreData = scoreManager.GetScoreData();
+        }
+        
+        // Save UI data
+        if (uiManager != null)
+        {
+            gameData.gameTime = uiManager.GetGameTime();
+            gameData.moveCount = uiManager.GetMoveCount();
+        }
+        
+        saveLoadManager.SaveGame(gameData);
+    }
+    
+    public void LoadGame()
+    {
+        if (saveLoadManager == null)
+            return;
+            
+        GameData gameData = saveLoadManager.LoadGame();
+        if (gameData == null)
+            return;
+            
+        // Clear existing cards
+        foreach (Card card in allCards)
+        {
+            Destroy(card.gameObject);
+        }
+        allCards.Clear();
+        flippedCards.Clear();
+        
+        // Load grid settings
+        rows = gameData.rows;
+        columns = gameData.columns;
+        totalMatches = (rows * columns) / 2;
+        matchesFound = gameData.matchesFound;
+        
+        SetupGrid();
+        
+        // Recreate cards with saved states
+        foreach (CardData cardData in gameData.cards)
+        {
+            GameObject cardObject = Instantiate(cardPrefab, gridContainer);
+            Card card = cardObject.GetComponent<Card>();
+            
+            if (card != null)
+            {
+                card.SetCardId(cardData.cardId);
+                if (cardData.cardId < cardImages.Length)
+                {
+                    card.SetCardImage(cardImages[cardData.cardId]);
+                }
+                if (cardBackImage != null)
+                {
+                    card.SetCardBackImage(cardBackImage);
+                }
+                
+                // Restore card state
+                if (cardData.isMatched)
+                {
+                    card.ShowFaceInstant();
+                    card.SetMatched();
+                }
+                else if (cardData.isFlipped)
+                {
+                    // If card was flipped but not matched, show it flipped
+                    card.ShowFaceInstant();
+                    flippedCards.Add(card);
+                }
+                
+                card.transform.SetSiblingIndex(cardData.siblingIndex);
+                allCards.Add(card);
+            }
+        }
+        
+        // Restore score
+        if (scoreManager != null && gameData.scoreData != null)
+        {
+            scoreManager.LoadScoreData(gameData.scoreData);
+        }
+        
+        // Restore UI
+        if (uiManager != null)
+        {
+            uiManager.SetGameTime(gameData.gameTime);
+            uiManager.SetMoveCount(gameData.moveCount);
+            uiManager.ResumeGame();
+        }
+        
+        Debug.Log($"Game loaded: {rows}x{columns}, Matches: {matchesFound}/{totalMatches}");
+    }
+    
+    private IEnumerator AutoSaveCoroutine()
+    {
+        while (true)
+        {
+            yield return new WaitForSeconds(autoSaveInterval);
+            
+            // Only auto-save if game is active and not complete
+            if (matchesFound < totalMatches)
+            {
+                SaveGame();
+            }
+        }
+    }
+    
+    private void OnApplicationPause(bool pauseStatus)
+    {
+        if (pauseStatus && autoSave)
+        {
+            SaveGame();
+        }
+    }
+    
+    private void OnApplicationQuit()
+    {
+        if (autoSave)
+        {
+            SaveGame();
+        }
     }
 }
