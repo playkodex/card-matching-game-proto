@@ -19,6 +19,10 @@ public class CardGameManager : MonoBehaviour
     [SerializeField] private Sprite[] cardImages;
     [SerializeField] private Sprite cardBackImage;
     
+    [Header("Scoring")]
+    [SerializeField] private ScoreManager scoreManager;
+    [SerializeField] private UIManager uiManager;
+    
     private List<Card> allCards = new List<Card>();
     private List<Card> flippedCards = new List<Card>();
     private int matchesFound = 0;
@@ -27,6 +31,16 @@ public class CardGameManager : MonoBehaviour
     
     private void Start()
     {
+        if (scoreManager == null)
+        {
+            scoreManager = ScoreManager.Instance;
+        }
+        
+        if (uiManager == null)
+        {
+            uiManager = FindObjectOfType<UIManager>();
+        }
+        
         totalMatches = (rows * columns) / 2;
         SetupGrid();
         GenerateCards();
@@ -120,6 +134,12 @@ public class CardGameManager : MonoBehaviour
         // Check for pairs when we have at least 2 flipped cards
         if (flippedCards.Count >= 2 && !isProcessingMatches)
         {
+            // Increment moves when a pair is formed
+            if (uiManager != null)
+            {
+                uiManager.IncrementMoves();
+            }
+            
             StartCoroutine(ProcessMatches());
         }
     }
@@ -156,9 +176,22 @@ public class CardGameManager : MonoBehaviour
                     secondCard.SetMatched();
                     matchesFound++;
                     
+                    // Add score for match
+                    if (scoreManager != null)
+                    {
+                        scoreManager.AddMatchScore();
+                    }
+                    
                     if (matchesFound >= totalMatches)
                     {
                         Debug.Log("Game Complete! All matches found!");
+                        
+                        // Stop the timer
+                        if (uiManager != null)
+                        {
+                            uiManager.StopGame();
+                        }
+                        
                         // You can add win screen logic here
                     }
                 }
@@ -167,6 +200,12 @@ public class CardGameManager : MonoBehaviour
                     // No match, flip cards back
                     firstCard.ResetCard();
                     secondCard.ResetCard();
+                    
+                    // Apply penalty for mismatch
+                    if (scoreManager != null)
+                    {
+                        scoreManager.AddMismatchPenalty();
+                    }
                 }
                 
                 cardsToRemove.Add(firstCard);
@@ -202,6 +241,18 @@ public class CardGameManager : MonoBehaviour
         flippedCards.Clear();
         isProcessingMatches = false;
         matchesFound = 0;
+        
+        // Reset score
+        if (scoreManager != null)
+        {
+            scoreManager.ResetScore();
+        }
+        
+        // Reset UI
+        if (uiManager != null)
+        {
+            uiManager.ResetUI();
+        }
         
         // Generate new cards
         GenerateCards();
