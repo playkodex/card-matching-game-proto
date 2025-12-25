@@ -188,7 +188,7 @@ MonoBehaviour:
   m_ChildAlignment: 4
   m_StartCorner: 0
   m_StartAxis: 0
-  m_CellSize: {x: 250, y: 400}
+  m_CellSize: {x: 250, y: 250}
   m_Spacing: {x: 10, y: 10}
   m_Constraint: 0
   m_ConstraintCount: 2
@@ -1456,10 +1456,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5c58c37cbe1e2054f81a228739b518cb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  rows: 4
-  columns: 4
+  rows: 2
+  columns: 2
   flipDelay: 1
-  cardPrefab: {fileID: 1342875963836759263, guid: 96328e4e9f0288f4bba3330eada36fc0, type: 3}
+  cardPrefab: {fileID: 5020448920534072575, guid: afca7a83f8727a84a90f305ce052f4f1, type: 3}
   gridContainer: {fileID: 80311205}
   gridLayoutGroup: {fileID: 80311208}
   containerRect: {fileID: 0}
@@ -1467,11 +1467,17 @@ MonoBehaviour:
   padding: 20
   aspectRatio: 0.7
   cardImages:
-  - {fileID: 21300000, guid: a2de625a1a765dd45acfced7fd2c602d, type: 3}
-  - {fileID: 21300000, guid: 1526322ca9765b94cb40823218e58787, type: 3}
-  - {fileID: 21300000, guid: 316a59926d72e2246bfc1f73bb018b5b, type: 3}
-  - {fileID: 21300000, guid: 8aab7a10e1dc0bf4882dbddd5c21c5fe, type: 3}
-  cardBackImage: {fileID: 21300000, guid: 6b3892518e8635a4f9f0d7fad498e89f, type: 3}
+  - {fileID: 21300000, guid: 9aab48a2429cf1d49ad1a28eb44bccc1, type: 3}
+  - {fileID: 21300000, guid: 878018e21efac4f4497c83d939ffe8c4, type: 3}
+  - {fileID: 21300000, guid: 21dbbd6869035ca4db5b1385f1f80701, type: 3}
+  - {fileID: 21300000, guid: dae7c504ff6944f4ba4f2cb949ed99af, type: 3}
+  - {fileID: 21300000, guid: f4193bbe1c729754891e5fd364043e0e, type: 3}
+  - {fileID: 21300000, guid: 4d596b663bc8d324a9e170b00ff1e330, type: 3}
+  - {fileID: 21300000, guid: 7b7066be5f716cb4c8baf6765b408090, type: 3}
+  - {fileID: 21300000, guid: 75e129d2e8321804aa903b3bf6d55a1c, type: 3}
+  - {fileID: 21300000, guid: 138f1d54c123ff44da4e896646053f18, type: 3}
+  - {fileID: 21300000, guid: 97ac28242da7f404180cb2713835d546, type: 3}
+  cardBackImage: {fileID: 21300000, guid: 5f9e0bd0b01a7214c9965497d41e7b7f, type: 3}
   scoreManager: {fileID: 1088140504}
   uiManager: {fileID: 1088140503}
   saveLoadManager: {fileID: 1088140505}
@@ -1551,6 +1557,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   gameOverPanel: {fileID: 1800813482}
+  panelCanvasGroup: {fileID: 0}
+  panelRect: {fileID: 0}
   titleText: {fileID: 209713768}
   finalScoreText: {fileID: 432816635}
   finalTimeText: {fileID: 1569972254}
@@ -1559,6 +1567,11 @@ MonoBehaviour:
   playAgainButton: {fileID: 1816409708}
   quitButton: {fileID: 1423389896}
   victoryMessage: Victory :)
+  panelFadeDuration: 0.3
+  panelScaleDuration: 0.5
+  textStaggerDelay: 0.1
+  textAnimDuration: 0.4
+  buttonAnimDelay: 0.5
 --- !u!1 &1316159024
 GameObject:
   m_ObjectHideFlags: 0
